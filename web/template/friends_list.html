@@ -1,0 +1,18 @@
+{{define "title"}}Friend list{{end}}
+
+{{define "body"}}
+  {{range .Users}}
+  <div class="row mb-3">
+    <div class="col-2 themed-grid-col">{{ .Name }}</div>
+    <div class="col-2 themed-grid-col">{{ .Surname }}</div>
+    <div class="col-2 themed-grid-col">{{ .Sex }}</div>
+    <div class="col-2 themed-grid-col">{{ .Interests }}</div>
+    <div class="col-2 themed-grid-col">
+      <form name="logout" action="/friendship-stop" method="post">
+          <input type="hidden" name="friend_id" value="{{.ID}}">
+          <button>Stop friendship</button>
+        </form>
+    </div>
+  </div>
+  {{end}}
+{{end}}

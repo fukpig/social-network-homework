@@ -1,0 +1,22 @@
+{{define "title"}}Friend list{{end}}
+
+{{define "body"}}
+  {{range .Users}}
+  <div class="row mb-3">
+    <div class="col-2 themed-grid-col">{{ .Name }}</div>
+    <div class="col-2 themed-grid-col">{{ .Surname }}</div>
+    <div class="col-2 themed-grid-col">{{ .Sex }}</div>
+    <div class="col-2 themed-grid-col">{{ .Interests }}</div>
+    <div class="col-2 themed-grid-col">
+      <form name="logout" action="/friend-request-accept" method="post">
+          <input type="hidden" name="friend_id" value="{{.ID}}">
+          <button>Accept friendship</button>
+        </form>
+      <form name="logout" action="/friend-request-decline" method="post">
+          <input type="hidden" name="friend_id" value="{{.ID}}">
+          <button>Decline friendship</button>
+      </form>
+    </div>
+  </div>
+  {{end}}
+{{end}}
