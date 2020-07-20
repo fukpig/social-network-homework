@@ -1,6 +1,6 @@
 CREATE TABLE friendship(
-  user VARCHAR(250),
-  friend VARCHAR(250),
+  user BIGINT,
+  friend BIGINT,
   primary key(user, friend),
   key(friend, user)
 );

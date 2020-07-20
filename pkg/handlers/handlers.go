@@ -17,7 +17,6 @@ import (
 	tokenService "social-network/pkg/token"
 
 	"github.com/gorilla/sessions"
-	"github.com/segmentio/ksuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,7 +28,7 @@ func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := h.SessionsStore.Get(r, "session")
 
 	user, err := auth.CheckSession(session)
-	if err != nil || user.ID == "" {
+	if err != nil || user.ID == 0 {
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
 
@@ -42,6 +41,93 @@ func (h *Handler) SignupHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, _ := template.ParseFiles(lp, fp)
 	tmpl.ExecuteTemplate(w, "layout", nil)
+}
+
+func (h *Handler) SearchHandler(w http.ResponseWriter, r *http.Request) {
+	lp := filepath.Join("./template", "layout.html")
+	fp := filepath.Join("./template", "search.html")
+
+	tmpl, _ := template.ParseFiles(lp, fp)
+	tmpl.ExecuteTemplate(w, "layout", nil)
+}
+
+func (h *Handler) SearchTestHandler(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	surname := r.FormValue("surname")
+
+	session, _ := h.SessionsStore.Get(r, "session")
+
+	user, err := auth.CheckSession(session)
+	isAuth := true
+	if err != nil || user.ID == 0 {
+		isAuth = false
+	}
+
+	ctx := r.Context()
+
+	users, err := db.SearchUsers(ctx, name, surname)
+	if err != nil {
+		log.Println("Get users error")
+	}
+
+	lp := filepath.Join("./web/template/", "layout.html")
+	fp := filepath.Join("./web/template/", "search_list.html")
+	//lp := filepath.Join("./template", "layout.html")
+	//fp := filepath.Join("./template", "search_list.html")
+
+	tmpl, _ := template.ParseFiles(lp, fp)
+
+	data := struct {
+		IsAuth bool
+		Users  []schema.User
+		User   *schema.User
+	}{isAuth, users, user}
+
+	tmpl.ExecuteTemplate(w, "layout", data)
+}
+
+func (h *Handler) SearchPostHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+
+	}
+
+	session, _ := h.SessionsStore.Get(r, "session")
+
+	user, err := auth.CheckSession(session)
+	isAuth := true
+	if err != nil || user.ID == 0 {
+		isAuth = false
+	}
+
+	ctx := r.Context()
+
+	name := template.HTMLEscapeString(r.FormValue("name"))
+	if len(name) < 1 || len(name) > 140 {
+		log.Println("Create user invalid name:", name)
+	}
+
+	surname := template.HTMLEscapeString(r.FormValue("surname"))
+	if len(surname) < 1 || len(surname) > 140 {
+		log.Println("Create user invalid surname:", surname)
+	}
+
+	users, err := db.SearchUsers(ctx, name, surname)
+	if err != nil {
+		log.Println("Get users error")
+	}
+
+	lp := filepath.Join("./template", "layout.html")
+	fp := filepath.Join("./template", "search_list.html")
+
+	tmpl, _ := template.ParseFiles(lp, fp)
+
+	data := struct {
+		IsAuth bool
+		Users  []schema.User
+		User   *schema.User
+	}{isAuth, users, user}
+
+	tmpl.ExecuteTemplate(w, "layout", data)
 }
 
 func (h *Handler) SignupPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -91,13 +177,12 @@ func (h *Handler) SignupPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	createdAt := time.Now().UTC()
-	id, err := ksuid.NewRandomWithTime(createdAt)
+	/*id, err := ksuid.NewRandomWithTime(createdAt)
 	if err != nil {
 		log.Println("Create user ksuid error:", err)
-	}
+	}*/
 
 	user := schema.User{
-		ID:        id.String(),
 		Email:     email,
 		Password:  string(hashedPass),
 		City:      city,
@@ -184,7 +269,7 @@ func (h *Handler) UserListHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := h.SessionsStore.Get(r, "session")
 
 	user, err := auth.CheckSession(session)
-	if err != nil || user.ID == "" {
+	if err != nil || user.ID == 0 {
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
 
@@ -236,7 +321,7 @@ func (h *Handler) FriendsListHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := h.SessionsStore.Get(r, "session")
 
 	user, err := auth.CheckSession(session)
-	if err != nil || user.ID == "" {
+	if err != nil || user.ID == 0 {
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
 
@@ -282,14 +367,15 @@ func (h *Handler) FriendRequestPostHandler(w http.ResponseWriter, r *http.Reques
 	session, _ := h.SessionsStore.Get(r, "session")
 
 	user, err := auth.CheckSession(session)
-	if err != nil || user.ID == "" {
+	if err != nil || user.ID == 0 {
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
 
-	friendId := r.FormValue("friend_id")
+	friendIdForm := r.FormValue("friend_id")
+	friendId, _ := strconv.ParseInt(friendIdForm, 10, 64)
 
 	friendship, err := db.GetFriendship(ctx, user.ID, friendId)
-	if friendship.User != "" {
+	if friendship.User != 0 {
 		http.Redirect(w, r, "/friends", http.StatusMovedPermanently)
 	}
 
@@ -310,14 +396,15 @@ func (h *Handler) FriendRequestAcceptHandler(w http.ResponseWriter, r *http.Requ
 	session, _ := h.SessionsStore.Get(r, "session")
 
 	user, err := auth.CheckSession(session)
-	if err != nil || user.ID == "" {
+	if err != nil || user.ID == 0 {
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
 
-	friendId := r.FormValue("friend_id")
+	friendIdForm := r.FormValue("friend_id")
+	friendId, _ := strconv.ParseInt(friendIdForm, 10, 64)
 
 	friendship, err := db.GetFriendship(ctx, user.ID, friendId)
-	if friendship.User != "" {
+	if friendship.User != 0 {
 		http.Redirect(w, r, "/friends", http.StatusMovedPermanently)
 	}
 
@@ -338,14 +425,15 @@ func (h *Handler) FriendRequestDeclineHandler(w http.ResponseWriter, r *http.Req
 	session, _ := h.SessionsStore.Get(r, "session")
 
 	user, err := auth.CheckSession(session)
-	if err != nil || user.ID == "" {
+	if err != nil || user.ID == 0 {
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
 
-	friendId := r.FormValue("friend_id")
+	friendIdForm := r.FormValue("friend_id")
+	friendId, _ := strconv.ParseInt(friendIdForm, 10, 64)
 
 	friendship, err := db.GetFriendship(ctx, user.ID, friendId)
-	if friendship.User == "" {
+	if friendship.User == 0 {
 		http.Redirect(w, r, "/friends", http.StatusMovedPermanently)
 	}
 
@@ -362,7 +450,7 @@ func (h *Handler) FriendRequestListHandler(w http.ResponseWriter, r *http.Reques
 	session, _ := h.SessionsStore.Get(r, "session")
 
 	user, err := auth.CheckSession(session)
-	if err != nil || user.ID == "" {
+	if err != nil || user.ID == 0 {
 		http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 	}
 
@@ -382,7 +470,7 @@ func (h *Handler) FriendRequestListHandler(w http.ResponseWriter, r *http.Reques
 
 	friendshipRequests, err := db.ListFriendship(ctx, user.ID)
 
-	var requestsUserIDS []string
+	var requestsUserIDS []int64
 
 	for _, request := range friendshipRequests {
 		requestsUserIDS = append(requestsUserIDS, request.Friend)

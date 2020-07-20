@@ -1,6 +1,6 @@
 package schema
 
 type Friendship struct {
-	User   string `json:"id"`
-	Friend string `json:"friend"`
+	User   int64 `json:"id"`
+	Friend int64 `json:"friend"`
 }

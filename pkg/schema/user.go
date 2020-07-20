@@ -3,7 +3,7 @@ package schema
 import "time"
 
 type User struct {
-	ID           string    `json:"id"`
+	ID           int64     `json:"id"`
 	Email        string    `json:"email"`
 	Surname      string    `json:"surname"`
 	Name         string    `json:"name"`

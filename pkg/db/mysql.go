@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"social-network/pkg/schema"
 	"strings"
@@ -39,12 +40,15 @@ func (r *MysqlRepository) GetUserByEmail(ctx context.Context, email string) (*sc
 }
 
 func (r *MysqlRepository) InsertUser(ctx context.Context, user schema.User) error {
-	stmt, err := r.db.Prepare("INSERT INTO users(id, email, name, surname, sex, city, interests, password, created_at) VALUES(?,?,?,?,?,?,?,?,?)")
-	_, err = stmt.Exec(user.ID, user.Email, user.Name, user.Surname, user.Sex, user.City, user.Interests, user.Password, user.CreatedAt)
+	stmt, err := r.db.Prepare("INSERT INTO users(email, name, surname, sex, city, interests, password, created_at) VALUES(?,?,?,?,?,?,?,?)")
+	if err != nil {
+		fmt.Println("ERROR", err)
+	}
+	_, err = stmt.Exec(user.Email, user.Name, user.Surname, user.Sex, user.City, user.Interests, user.Password, user.CreatedAt)
 	return err
 }
 
-func (r *MysqlRepository) ListUsers(ctx context.Context, userID string, offset int, limit int) ([]schema.User, error) {
+func (r *MysqlRepository) ListUsers(ctx context.Context, userID int64, offset int, limit int) ([]schema.User, error) {
 	users := []schema.User{}
 	rows, err := r.db.QueryContext(ctx, "SELECT id, email, name, surname, sex, city, interests, password FROM users WHERE id <> ? LIMIT ? OFFSET ?", userID, limit, offset)
 	defer rows.Close()
@@ -66,7 +70,7 @@ func (r *MysqlRepository) ListUsers(ctx context.Context, userID string, offset i
 	return users, nil
 }
 
-func (r *MysqlRepository) GetUsersByIDS(ctx context.Context, userIDS []string, offset int, limit int) ([]schema.User, error) {
+func (r *MysqlRepository) GetUsersByIDS(ctx context.Context, userIDS []int64, offset int, limit int) ([]schema.User, error) {
 	users := []schema.User{}
 
 	args := make([]interface{}, len(userIDS))
@@ -101,8 +105,8 @@ func (r *MysqlRepository) GetUsersByIDS(ctx context.Context, userIDS []string, o
 	return users, nil
 }
 
-func (r *MysqlRepository) ListFriends(ctx context.Context, userID string) ([]string, error) {
-	var users []string
+func (r *MysqlRepository) ListFriends(ctx context.Context, userID int64) ([]int64, error) {
+	var users []int64
 	rows, err := r.db.QueryContext(ctx, "SELECT f1.friend from friendship f1 inner join friendship f2 on f1.user = f2.friend and f1.friend = f2.user WHERE f1.user = ?", userID)
 	defer rows.Close()
 
@@ -112,7 +116,7 @@ func (r *MysqlRepository) ListFriends(ctx context.Context, userID string) ([]str
 	}
 
 	for rows.Next() {
-		var id string
+		var id int64
 		if err = rows.Scan(&id); err == nil {
 			users = append(users, id)
 		}
@@ -124,25 +128,25 @@ func (r *MysqlRepository) ListFriends(ctx context.Context, userID string) ([]str
 	return users, nil
 }
 
-func (r *MysqlRepository) GetFriendship(ctx context.Context, user string, friend string) (*schema.Friendship, error) {
+func (r *MysqlRepository) GetFriendship(ctx context.Context, user int64, friend int64) (*schema.Friendship, error) {
 	friendship := new(schema.Friendship)
 	err := r.db.QueryRowContext(ctx, "SELECT user, friend FROM friendship WHERE user = ? AND friend = ?", user, friend).Scan(&friendship.User, &friendship.Friend)
 	return friendship, err
 }
 
-func (r *MysqlRepository) InsertFriendship(ctx context.Context, user string, friend string) error {
+func (r *MysqlRepository) InsertFriendship(ctx context.Context, user int64, friend int64) error {
 	stmt, err := r.db.Prepare("INSERT INTO friendship(user, friend) VALUES(?,?)")
 	_, err = stmt.Exec(user, friend)
 	return err
 }
 
-func (r *MysqlRepository) DeleteFriendship(ctx context.Context, user string, friend string) error {
+func (r *MysqlRepository) DeleteFriendship(ctx context.Context, user int64, friend int64) error {
 	stmt, err := r.db.Prepare("DELETE FROM friendship WHERE user = ? and friend = ?")
 	_, err = stmt.Exec(user, friend)
 	return err
 }
 
-func (r *MysqlRepository) ListFriendship(ctx context.Context, userID string) ([]schema.Friendship, error) {
+func (r *MysqlRepository) ListFriendship(ctx context.Context, userID int64) ([]schema.Friendship, error) {
 	var friendships []schema.Friendship
 	rows, err := r.db.QueryContext(ctx, "SELECT f1.user, f1.friend from friendship f1 inner join friendship f2 on f1.friend = f2.user WHERE f1.user = ?", userID)
 	defer rows.Close()
@@ -163,4 +167,29 @@ func (r *MysqlRepository) ListFriendship(ctx context.Context, userID string) ([]
 	}
 
 	return friendships, nil
+}
+
+func (r *MysqlRepository) SearchUsers(ctx context.Context, name string, surname string) ([]schema.User, error) {
+	users := []schema.User{}
+
+	fmt.Println(name, surname)
+	rows, err := r.db.Query("SELECT id, email, name, surname, sex, city, interests, password FROM users WHERE name LIKE ? and surname LIKE ? ORDER BY ID", name+"%", surname+"%")
+	defer rows.Close()
+
+	if err != nil {
+		fmt.Println(users, err)
+		return users, err
+	}
+
+	for rows.Next() {
+		user := schema.User{}
+		if err = rows.Scan(&user.ID, &user.Name, &user.Email, &user.Surname, &user.Sex, &user.City, &user.Interests, &user.Password); err == nil {
+			users = append(users, user)
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return users, err
+	}
+
+	return users, nil
 }

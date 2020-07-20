@@ -1,0 +1,12 @@
+{{define "title"}}Signup{{end}}
+
+{{define "body"}}
+<form class="form-signin" method="post" action="/search">
+  <h1 class="h3 mb-3 font-weight-normal">Search</h1>
+  <label  class="sr-only">Name</label>
+  <input type="text" name="name" id="inputEmail" class="form-control" placeholder="" >
+  <label  class="sr-only">Surname</label>
+  <input type="text" name="surname" id="inputEmail" class="form-control" placeholder="">
+  <button class="btn btn-lg btn-primary btn-block" type="submit">Search</button>
+</form>
+{{end}}

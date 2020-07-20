@@ -1,0 +1,11 @@
+{{define "title"}}Search list{{end}}
+
+{{define "body"}}
+  {{range .Users}}
+  <div class="row mb-3">
+    <div class="col-4 themed-grid-col">{{ .Name }}</div>
+    <div class="col-4 themed-grid-col">{{ .Surname }}</div>
+    <div class="col-4 themed-grid-col">{{ .Sex }}</div>
+  </div>
+  {{end}}
+{{end}}
